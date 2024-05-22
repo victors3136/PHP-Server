@@ -1,11 +1,14 @@
 <?php
 
 header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET');
+header('Access-Control-Allow-Methods: PUT');
 header('Access-Control-Allow-Headers: Origin, Content-Type, X-Auth-Token, Authorization');
 header('Content-Type: application/json');
 
 $data = json_decode(file_get_contents('php://input'), true);
+$form_data = $data['formData'];
+$name = $form_data['name'];
+$id = $_SESSION['id'];
 
 if (!isset($data['username'])) {
     echo json_encode([
@@ -13,6 +16,7 @@ if (!isset($data['username'])) {
         'message' => 'Username not provided']);
     return;
 }
+
 $username = $data['username'];
 
 $connection = new mysqli(
@@ -28,34 +32,36 @@ if ($connection->connect_error) {
     return;
 }
 
-$statement = $connection->prepare(
-    'select d.ID         as ID,
-                   d.Name      as Name,
-                   d.Extension as Extension
-            from document d
-                     inner join author a
-                                on d.AuthorID = a.ID
-            where a.Name = ? ;');
-$statement->bind_param('s', $username);
-$statement->execute();
 
-$result = $statement->get_result();
-if (!$result) {
+$statement = $connection->prepare('
+        select count(*)
+        from document 
+        where AuthorID = ? and ID = ?;');
+
+$statement->bind_param('ii', $username, $id);
+$statement->execute();
+$statement->bind_result($result);
+$statement->fetch();
+
+if ($result == 0) {
     echo json_encode([
         'success' => false,
-        'message' => 'Executing statement failed']);
+        'message' => 'That is not your document >:-(']);
+    $statement->close();
+    $connection->close();
     return;
 }
 
-$documents = [];
-while ($row = $result->fetch_assoc()) {
-    $item['ID'] = $row['ID'];
-    $item['Name'] = $row['Name'];
-    $item['Extension'] = $row['Extension'];
-    $documents[] = $item;
-}
-echo json_encode([
-    'success' => true,
-    'documents' => $documents]);
+$statement = $connection->prepare(
+    'update document 
+            set Name=?
+            where Id=?');
+$statement->bind_param('si', $name, $id);
+
+echo $statement->execute()
+    ? json_encode(['success' => true])
+    : json_encode(['success' => false,
+        'message' => 'Could not update the document']);
+
 $statement->close();
 $connection->close();
