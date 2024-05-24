@@ -5,29 +5,38 @@ header('Access-Control-Allow-Methods: POST');
 header('Access-Control-Allow-Headers: Origin, Content-Type, X-Auth-Token, Authorization');
 header('Content-Type: application/json');
 
-$data = json_decode(file_get_contents('php://input'), true);
+$body = json_decode(file_get_contents('php://input'), true);
 
-if (!isset($data['username'])) {
+if (!isset($body['username'])) {
     echo json_encode([
         'success' => false,
         'message' => 'Username not provided']);
     return;
 }
-$username = $data['username'];
-if (!isset($data['name'])) {
+$username = $body['username'];
+
+if (!isset($body['document'])) {
     echo json_encode([
         'success' => false,
-        'message' => 'Name for file not provided']);
+        'message' => 'Document not provided']);
     return;
 }
-$name = $data['name'];
-if (!isset($data['extension'])) {
+$document = $body['document'];
+
+if (!isset($document['Name'])) {
+    echo json_encode([
+        'success' => false,
+        'message' => 'Document name not provided']);
+    return;
+}
+$name = $document['Name'];
+if (!isset($document['Extension'])) {
     echo json_encode([
         'success' => false,
         'message' => 'Extension for file not provided']);
     return;
 }
-$extension = $data['extension'];
+$extension = $document['Extension'];
 if (!in_array($extension, [
     'txt', 'json', 'html', 'css', 'svg', 'scss', 'xml', 'xaml', 'yaml', 'fxml',
     'c', 'cpp', 'cs', 'java', 'js', 'jsx', 'ts', 'tsx',
@@ -72,11 +81,11 @@ if ($connection->connect_error) {
 $statement = $connection->prepare(
     'select ID
             from author 
-            where Name=? ;');
+            where Name= ? ;');
 $statement->bind_param('s', $username);
 $statement->execute();
-
 $result = $statement->get_result();
+$statement->close();
 if ($result->num_rows < 1) {
     echo json_encode(['success' => false]);
     $statement->close();

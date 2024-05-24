@@ -5,19 +5,41 @@ header('Access-Control-Allow-Methods: PUT');
 header('Access-Control-Allow-Headers: Origin, Content-Type, X-Auth-Token, Authorization');
 header('Content-Type: application/json');
 
-$data = json_decode(file_get_contents('php://input'), true);
-$form_data = $data['formData'];
-$name = $form_data['name'];
-$id = $_SESSION['id'];
+$uri = $_SERVER['REQUEST_URI'];
+$uriParts = explode('/', $uri);
+$documentID = end($uriParts);
 
-if (!isset($data['username'])) {
+if (!is_numeric($documentID)) {
     echo json_encode([
         'success' => false,
-        'message' => 'Username not provided']);
+        'message' => 'Invalid post id'
+    ]);
     return;
 }
 
-$username = $data['username'];
+$documentID = intval($documentID);
+
+$input = file_get_contents('php://input');
+
+$body = json_decode($input, true);
+if(!isset($body['user'])){
+    echo json_encode([
+        'success' => false,
+        'message' => 'Missing username '. $input
+    ]);
+    return;
+}
+$username = $body['user'];
+
+if (!isset($body['document']['Name'])) {
+    echo json_encode([
+        'success' => false,
+        'message' => 'Missing document name '. $input
+    ]);
+    return;
+}
+
+$documentName = $body['document']['Name'];
 
 $connection = new mysqli(
     getenv('web_prog_lab_host'),
@@ -32,22 +54,20 @@ if ($connection->connect_error) {
     return;
 }
 
-
 $statement = $connection->prepare('
         select count(*)
-        from document 
-        where AuthorID = ? and ID = ?;');
+        from document d inner join author a on d.AuthorID = a.ID
+        where a.Name=? and d.ID=? ;');
 
-$statement->bind_param('ii', $username, $id);
+$statement->bind_param('si', $username, $documentID);
 $statement->execute();
 $statement->bind_result($result);
 $statement->fetch();
-
+$statement->close();
 if ($result == 0) {
     echo json_encode([
         'success' => false,
-        'message' => 'That is not your document >:-(']);
-    $statement->close();
+        'message' => 'Could not find document']);
     $connection->close();
     return;
 }
@@ -55,8 +75,8 @@ if ($result == 0) {
 $statement = $connection->prepare(
     'update document 
             set Name=?
-            where Id=?');
-$statement->bind_param('si', $name, $id);
+            where Id=? ;');
+$statement->bind_param('si', $documentName, $documentID);
 
 echo $statement->execute()
     ? json_encode(['success' => true])

@@ -5,7 +5,15 @@ header('Access-Control-Allow-Methods: GET');
 header('Access-Control-Allow-Headers: Origin, Content-Type, X-Auth-Token, Authorization');
 header('Content-Type: application/json');
 
-$data = json_decode(file_get_contents('php://input'), true);
+if (!isset($_GET['id'])) {
+    echo json_encode([
+        'success' => false,
+        'message' => 'Post id not provided'
+    ]);
+    return;
+}
+
+$id = $_GET['id'];
 
 $connection = new mysqli(
     getenv('web_prog_lab_host'),
@@ -24,11 +32,15 @@ $statement = $connection->prepare(
     'select d.ID         as ID,
                    d.Name      as Name,
                    d.Extension as Extension,
-                   a.Name  as Author
-            from document d 
-                inner join author a
-                    on d.AuthorID = a.ID; '
+                   a.Name  as Author,
+                   d.Document as Contents
+            from document d
+                     inner join author a
+                                on d.AuthorID = a.ID
+            where d.ID = ? ;'
 );
+
+$statement->bind_param('i', $id);
 
 $statement->execute();
 
@@ -43,16 +55,17 @@ if (!$result) {
 
 $documents = [];
 while ($row = $result->fetch_assoc()) {
-    $documents[] = [
-        'ID' => $row['ID'],
-        'Name' => $row['Name'],
-        'Extension' => $row['Extension'],
-        'Author' => $row['Author']
-    ];
+    $item['ID'] = $row['ID'];
+    $item['Name'] = $row['Name'];
+    $item['Extension'] = $row['Extension'];
+    $item['Author'] = $row['Author'];
+    $item['Contents'] = $row['Contents'];
+    $documents[] = $item;
 }
 
 echo json_encode([
     'success' => true,
     'documents' => $documents]);
+
 $statement->close();
 $connection->close();

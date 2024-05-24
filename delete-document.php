@@ -5,21 +5,19 @@ header('Access-Control-Allow-Methods: DELETE');
 header('Access-Control-Allow-Headers: Origin, Content-Type, X-Auth-Token, Authorization');
 header('Content-Type: application/json');
 
-if (!isset($data['username'])) {
-    echo json_encode([
-        'success' => false,
-        'message' => 'Username not provided']);
-    return;
-}
-$username = $data['username'];
+$uri = $_SERVER['REQUEST_URI'];
+$uriParts = explode('/', $uri);
+$id = end($uriParts);
 
-if (!isset($data['id'])) {
+if (!is_numeric($id)) {
     echo json_encode([
         'success' => false,
-        'message' => 'Id for post to delete not provided']);
+        'message' => 'Invalid post id'
+    ]);
     return;
 }
-$id = $data['id'];
+
+$id = intval($id);
 
 $connection = new mysqli(
     getenv('web_prog_lab_host'),
@@ -38,25 +36,24 @@ if ($connection->connect_error) {
 $statement = $connection->prepare('
         select count(*)
         from document 
-        where AuthorID = ? and ID = ?;');
+        where ID = ?;');
 
-$statement->bind_param('ii', $username, $id);
+$statement->bind_param('i', $id);
 $statement->execute();
 $statement->bind_result($result);
 $statement->fetch();
-
+$statement->close();
 if ($result == 0) {
     echo json_encode([
         'success' => false,
-        'message' => 'That is not your document >:-(']);
-    $statement->close();
+        'message' => 'No such document']);
     $connection->close();
     return;
 }
-
 $statement = $connection->prepare(
     'delete from document 
-            where Id=?');
+            where ID=?');
+
 $statement->bind_param('i', $id);
 
 echo $statement->execute()

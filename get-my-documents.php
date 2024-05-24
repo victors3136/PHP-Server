@@ -5,15 +5,14 @@ header('Access-Control-Allow-Methods: GET');
 header('Access-Control-Allow-Headers: Origin, Content-Type, X-Auth-Token, Authorization');
 header('Content-Type: application/json');
 
-$data = json_decode(file_get_contents('php://input'), true);
-
-if (!isset($data['username'])) {
+if (!isset($_GET['username'])) {
     echo json_encode([
         'success' => false,
-        'message' => 'Username not provided']);
+        'message' => 'Username not provided'
+    ]);
     return;
 }
-$username = $data['username'];
+$username = $_GET['username'];
 
 $connection = new mysqli(
     getenv('web_prog_lab_host'),
