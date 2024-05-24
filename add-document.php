@@ -7,13 +7,13 @@ header('Content-Type: application/json');
 
 $body = json_decode(file_get_contents('php://input'), true);
 
-if (!isset($body['username'])) {
+if (!isset($body['user'])) {
     echo json_encode([
         'success' => false,
-        'message' => 'Username not provided']);
+        'message' => 'Username not provided ' . json_encode($body)]);
     return;
 }
-$username = $body['username'];
+$username = $body['user'];
 
 if (!isset($body['document'])) {
     echo json_encode([
@@ -45,24 +45,26 @@ if (!in_array($extension, [
     'sql'])) {
     echo json_encode([
         'success' => false,
-        'message' => 'Unaccepted file extension']);
+        'message' => 'Unaccepted file extension' . $extension ]);
     return;
 }
-if (!isset($_FILES['Contents'])) {
+if (!isset($document['Contents'])) {
     echo json_encode([
         'success' => false,
         'message' => 'Content for file not provided']);
     return;
 }
-$file = $_FILES['Contents'];
+$file = $document['Contents'];
 
-$real_extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-if ($real_extension != $extension) {
-    echo json_encode([
-        'success' => false,
-        'message' => 'Specified extension does not match actual extension']);
-    return;
-}
+
+//$real_extension = strtolower(pathinfo($documentName, PATHINFO_EXTENSION));
+//
+//if ($real_extension != $extension) {
+//    echo json_encode([
+//        'success' => false,
+//        'message' => 'Specified extension does not match actual extension']);
+//    return;
+//}
 
 
 $connection = new mysqli(
@@ -86,9 +88,9 @@ $statement->bind_param('s', $username);
 $statement->execute();
 $result = $statement->get_result();
 $statement->close();
+
 if ($result->num_rows < 1) {
     echo json_encode(['success' => false]);
-    $statement->close();
     $connection->close();
     return;
 }
@@ -98,9 +100,9 @@ $statement = $connection->prepare(
     'insert into document (Name, Extension, AuthorID, Document) 
                         values (?,?,?,?)');
 
-$statement->bind_param('ssis', $name, $extension, $author_id, $file_content);
+$statement->bind_param('ssis', $name, $extension, $author_id, $file);
 
-$file_content = file_get_contents($file['tmp_name']);
+//$file_content = file_get_contents($documentName);
 echo $statement->execute()
     ? json_encode(['success' => true])
     : json_encode(['success' => false,
