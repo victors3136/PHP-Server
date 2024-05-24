@@ -48,13 +48,13 @@ if (!in_array($extension, [
         'message' => 'Unaccepted file extension']);
     return;
 }
-if (!isset($_FILES['file'])) {
+if (!isset($_FILES['Contents'])) {
     echo json_encode([
         'success' => false,
         'message' => 'Content for file not provided']);
     return;
 }
-$file = $_FILES['file'];
+$file = $_FILES['Contents'];
 
 $real_extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
 if ($real_extension != $extension) {
